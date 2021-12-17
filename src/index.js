@@ -1,41 +1,129 @@
 const express = require('express');
 const cors = require('cors');
+const req = require('express/lib/request');
 
-// const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const { use } = require('express/lib/application');
+const res = require('express/lib/response');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// const users = [];
+const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers
+
+  const user = users.find(user => user.username === username)
+
+  if (!user) {
+    return response.status(404).json({
+      error: 'Usuário não existe - middleware message'
+    })
+  }
+
+  request.user = user
+  return next();
 }
 
 app.post('/users', (request, response) => {
-  // Complete aqui
+  const { name, username } = request.body
+
+  const checksExistsUserAccount = users.find((user) => user.username === username)
+
+  if (checksExistsUserAccount) {
+    return response.status(400).json({
+      error: "User already exists"
+    })
+  }
+  const user = {
+    id: uuidv4(), // precisa ser um uuid
+    name,
+    username,
+    todos: []
+  }
+
+  users.push(user);
+  return response.status(201).json(user)
+
 });
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request
+
+  return response.json(
+    user.todos
+  )
 });
 
 app.post('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request
+  const { title, deadline } = request.body
+
+  const todo = {
+    id: uuidv4(), // precisa ser um uuid
+    title,
+    done: false,
+    deadline: new Date(deadline),
+    created_at: new Date()
+  }
+
+  user.todos.push(todo)
+
+  return response.status(201).json(todo)
 });
 
 app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request
+  const { title, deadline } = request.body
+  const { id } = request.params
+
+  const todo = user.todos.find(todo => todo.id === id)
+
+  if (!todo) {
+    return response.status(404).json({
+      error: 'não foi possivel encontrar a tarefa'
+    })
+  }
+
+  todo.title = title
+  todo.deadline = new Date(deadline)
+
+  return response.status(201).json(todo)
+
 });
 
 app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request
+  const { id } = request.params
+
+  const todo = user.todos.find(todo => todo.id === id)
+  if (!todo) {
+    return response.status(404).json({
+      error: 'não foi possivel encontrar a tarefa'
+    })
+  }
+  todo.done = true
+
+  return response.status(201).json(todo)
 });
 
 app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { user } = request
+  const { id } = request.params
+
+  const todoIndex = user.todos.findIndex(todo => todo.id === id)
+  if (todoIndex === -1) {
+    return response.status(404).json({
+      error: 'não foi possivel encontrar a tarefa'
+    })
+  }
+
+  user.todos.splice(todoIndex, 1)
+  return response.status(204).json()
+
 });
 
 module.exports = app;
